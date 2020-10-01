@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as moment from "moment";
 
 export function activate(context: vscode.ExtensionContext) {
   console.log(
@@ -10,7 +11,11 @@ export function activate(context: vscode.ExtensionContext) {
     (texitEditor, edit) => {
       texitEditor.selections.forEach((select) => {
         const replaceRange = new vscode.Range(select.start, select.end);
-        edit.replace(replaceRange, new Date().toLocaleString());
+        const now = moment();
+        edit.replace(
+          replaceRange,
+          now.format(moment.HTML5_FMT.DATETIME_LOCAL_SECONDS)
+        );
       });
     }
   );
