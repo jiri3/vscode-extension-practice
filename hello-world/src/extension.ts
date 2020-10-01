@@ -19,11 +19,43 @@ export function activate(context: vscode.ExtensionContext) {
     () => {
       // The code you place here will be executed every time your command is executed
       // Display a message box to the user
-      vscode.window.showInformationMessage(
-        "Hello World from ExtensionPractice!"
+
+      // 情報メッセージ
+      const message = vscode.window.showInformationMessage(
+        "Information Message!",
+        { modal: false },
+        { title: "Button1", isCloseAffordance: false },
+        { title: "Button2", isCloseAffordance: true }
       );
+
+      // ワーニングメッセージ
+      // const message = vscode.window.showWarningMessage("Warning Message!", {
+      //   modal: true,
+      // });
+
+      // エラーメッセージ
+      // const message = vscode.window.showErrorMessage("Error Message!", {
+      //   modal: true,
+      // });
+
+      // ステータスバーメッセージ
+      // const message = vscode.window.setStatusBarMessage(
+      //   "status bar message",
+      //   5000
+      // );
+      message.then((value) => {
+        console.log(value);
+      });
     }
   );
+  const item = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    1
+  );
+  item.text = `status`;
+  item.tooltip = `ツールチップ`;
+  item.command = "extension-practice.helloWorld";
+  item.show();
 
   context.subscriptions.push(disposable);
 }
