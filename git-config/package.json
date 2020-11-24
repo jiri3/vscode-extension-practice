@@ -21,7 +21,7 @@
       }
     ],
     "configuration": {
-      "title": "Git config",
+      "title": "git config",
       "properties": {
         "git-config.userName": {
           "type": [
