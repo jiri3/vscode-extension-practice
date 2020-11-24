@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:extension-practice.now"
+    "onLanguage:markdown"
   ],
   "main": "./out/extension.js",
   "contributes": {
