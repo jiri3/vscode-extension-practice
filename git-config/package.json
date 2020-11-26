@@ -24,18 +24,12 @@
       "title": "git config",
       "properties": {
         "git-config.userName": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": null,
           "description": "please enter git config user name"
         },
         "git-config.userEmail": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": null,
           "description": "please enter git config user email"
         }
