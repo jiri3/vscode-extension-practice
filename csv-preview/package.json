@@ -24,7 +24,7 @@
       "commandPalette": [
         {
           "command": "extension-practice.csv-preview",
-          "when": "editorFocus && resourceExtname == .csv"
+          "when": "resourceExtname == .csv"
         }
       ]
     }

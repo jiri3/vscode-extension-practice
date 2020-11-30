@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
       const panel = vscode.window.createWebviewPanel(
         "csvPreview",
         "CSV Preview",
-        vscode.ViewColumn.One
+        vscode.ViewColumn.Two
       );
 
       // cssのパスを生成する。
@@ -65,7 +65,7 @@ function convertCsvToHtmlTable(document: vscode.TextDocument): string {
 
 function getWebviewContent(cssUri: vscode.Uri, contents: string): string {
   return `<!DOCTYPE html>
-          <html lang="en">
+          <html lang="ja">
           <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
