@@ -44,6 +44,21 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
       webviewPanel.webview,
       this.contents
     );
+
+    // webviewとドキュメントの同期処理をする
+    // ドキュメントが直接更新された場合、
+    // または、カスタムエディタが複数開かれており、どちらか一方で更新された場合など。
+    // const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(
+    //   (e) => {
+    //     if (e.document.uri.toString() === document.uri.toString()) {
+    //       // ドキュメントとwebviewとの同期処理をする
+    //     }
+    //   }
+    // );
+    // webviewPanel.onDidDispose(() => {
+    //   changeDocumentSubscription.dispose();
+    // });
+
     webviewPanel.webview.onDidReceiveMessage(async (e) => {
       switch (e.type) {
         case "detail":
