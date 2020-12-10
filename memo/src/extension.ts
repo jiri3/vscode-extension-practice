@@ -2,35 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Congratulations, your extension "memo" is now active!');
-
   context.subscriptions.push(CustomTextEditor.register(context));
-
-  // let disposable = vscode.commands.registerCommand(
-  //   "extension-practice.memo",
-  //   () => {
-  //     const panel = vscode.window.createWebviewPanel(
-  //       "memo",
-  //       "memo",
-  //       vscode.ViewColumn.Two,
-  //       {
-  //         enableScripts: true,
-  //       }
-  //     );
-  //     panel.webview.html = getView(context, panel.webview);
-  //     panel.webview.onDidReceiveMessage((e) => {
-  //       switch (e.type) {
-  //         case "save":
-  //           console.log(e.payload);
-  //           break;
-  //         default:
-  //           break;
-  //       }
-  //     });
-  //   }
-  // );
-
-  // context.subscriptions.push(disposable);
 }
 
 interface Contents {
@@ -43,6 +15,9 @@ interface Memo {
   contents: Contents[];
 }
 class CustomTextEditor implements vscode.CustomTextEditorProvider {
+  private static readonly viewType = `extension-practice.memo`;
+  private contents: Memo = { contents: [] };
+
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
@@ -52,21 +27,6 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
       provider
     );
     return providerRegistration;
-  }
-
-  private static readonly viewType = `extension-practice.memo`;
-  private contents: Memo = { contents: [] };
-
-  private fetchContents(document: vscode.TextDocument) {
-    const text = document.getText();
-    try {
-      this.contents = JSON.parse(text);
-    } catch (e) {
-      vscode.window.showErrorMessage("memoファイルが破損しています。");
-    }
-  }
-  private refreshContents(document: vscode.TextDocument) {
-    this.fetchContents(document);
   }
 
   public async resolveCustomTextEditor(
@@ -79,7 +39,7 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
     };
     this.fetchContents(document);
 
-    webviewPanel.webview.html = getListView(
+    webviewPanel.webview.html = this.getListView(
       this.context,
       webviewPanel.webview,
       this.contents
@@ -91,7 +51,7 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
             (value) => value.id == e.payload.id
           );
           if (contentFilteredId.length < 1) return;
-          webviewPanel.webview.html = getDetailView(
+          webviewPanel.webview.html = this.getDetailView(
             this.context,
             webviewPanel.webview,
             contentFilteredId[0]
@@ -103,7 +63,7 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
             title: "",
             memo: "",
           };
-          webviewPanel.webview.html = getDetailView(
+          webviewPanel.webview.html = this.getDetailView(
             this.context,
             webviewPanel.webview,
             memo
@@ -119,7 +79,7 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
           break;
         case "back":
           this.refreshContents(document);
-          webviewPanel.webview.html = getListView(
+          webviewPanel.webview.html = this.getListView(
             this.context,
             webviewPanel.webview,
             this.contents
@@ -128,6 +88,18 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
         default:
       }
     });
+  }
+
+  private fetchContents(document: vscode.TextDocument) {
+    const text = document.getText();
+    try {
+      this.contents = JSON.parse(text);
+    } catch (e) {
+      vscode.window.showErrorMessage("memoファイルが破損しています。");
+    }
+  }
+  private refreshContents(document: vscode.TextDocument) {
+    this.fetchContents(document);
   }
 
   private async add(document: vscode.TextDocument, content: Contents) {
@@ -159,6 +131,7 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
     const replaceRegExp = new RegExp(`\\{\\s*"id":\\s*"${id}"(?:.|\\s)*?\\}`);
     const firstIndex = text.search(replaceRegExp);
     const match = text.match(replaceRegExp);
+
     if (!match?.length) return;
     const lastIndex = firstIndex + match[0].length;
 
@@ -183,76 +156,78 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
     if (!isApplay) return false;
     return document.save();
   }
-}
 
-function getListView(
-  context: vscode.ExtensionContext,
-  webview: vscode.Webview,
-  memo: Memo | null
-): string {
-  if (!memo) return "";
-  const body = memo.contents.reduce((pre, cur) => {
-    return `${pre}<tr><td>
-      <a href="javascript:voie(0)" data-id="${cur.id}">${cur.title}</a>
-    </td><td>${cur.memo}</td></tr>`;
-  }, "");
-  const table = `<table border="1">
-    <thead><tr><th>タイトル</th><th>メモ</th></tr></thead>
-    <tbody>${body}</tbody>
-  </table>`;
+  private getListView(
+    context: vscode.ExtensionContext,
+    webview: vscode.Webview,
+    memo: Memo | null
+  ): string {
+    if (!memo) return "";
+    const body = memo.contents.reduce((pre, cur) => {
+      return `${pre}<tr><td>
+        <a href="javascript:voie(0)" data-id="${cur.id}">${cur.title}</a>
+      </td><td>${cur.memo}</td></tr>`;
+    }, "");
+    const table = `<table border="1">
+      <thead><tr><th>タイトル</th><th>メモ</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
 
-  const scriptUri = webview.asWebviewUri(
-    vscode.Uri.file(path.join(context.extensionPath, "media", "out", "list.js"))
-  );
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.file(
+        path.join(context.extensionPath, "media", "out", "list.js")
+      )
+    );
 
-  return `<!DOCTYPE html>
-  <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>memo list</title>
-    </head>
-    <body>
-      <button type="button" class="add-button" name="add" value="add">新規</button>
-      ${table}
-    </body>
-    <script src="${scriptUri}"></script>
-  </html>`;
-}
+    return `<!DOCTYPE html>
+    <html lang="ja">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>memo list</title>
+      </head>
+      <body>
+        <button type="button" class="add-button" name="add" value="add">新規</button>
+        ${table}
+      </body>
+      <script src="${scriptUri}"></script>
+    </html>`;
+  }
 
-function getDetailView(
-  context: vscode.ExtensionContext,
-  webview: vscode.Webview,
-  contents: Contents
-) {
-  const scriptUri = webview.asWebviewUri(
-    vscode.Uri.file(
-      path.join(context.extensionPath, "media", "out", "detail.js")
-    )
-  );
-  return `<!DOCTYPE html>
-  <html lang="ja">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Memo Detail</title>
-    </head>
-    <body style="max-width:300px;">
-      <form name="form">
-        <input name="id" type="hidden" value="${contents.id}" />
-        <div>
-          <label>タイトル:</label><input name="title" type="text" value="${contents.title}" required />
-        </div>
-        <div>
-          <label style="vertical-align:top;">メモ:</label>
-          <textarea name="memo" rows="4" cols="30">${contents.memo}</textarea>
-        </div>
-        <button style="float:right; margin-right:50px" type="button" class="save-button" name="save" value="save">保存</button>
-        <button style="float:right; margin-right:20px" type="button" class="back-button" name="back" value="back">戻る</button>
-      </form>
-    </body>
-    <script src="${scriptUri}"></script>
-  </html>`;
+  private getDetailView(
+    context: vscode.ExtensionContext,
+    webview: vscode.Webview,
+    contents: Contents
+  ) {
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.file(
+        path.join(context.extensionPath, "media", "out", "detail.js")
+      )
+    );
+    return `<!DOCTYPE html>
+    <html lang="ja">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Memo Detail</title>
+      </head>
+      <body style="max-width:300px;">
+        <form name="form">
+          <input name="id" type="hidden" value="${contents.id}" />
+          <div>
+            <label>タイトル:</label><input name="title" type="text" value="${contents.title}" required />
+          </div>
+          <div>
+            <label style="vertical-align:top;">メモ:</label>
+            <textarea name="memo" rows="4" cols="30">${contents.memo}</textarea>
+          </div>
+          <button style="float:right; margin-right:50px" type="button" class="save-button" name="save" value="save">保存</button>
+          <button style="float:right; margin-right:20px" type="button" class="back-button" name="back" value="back">戻る</button>
+        </form>
+      </body>
+      <script src="${scriptUri}"></script>
+    </html>`;
+  }
 }
 
 export function deactivate() {}
