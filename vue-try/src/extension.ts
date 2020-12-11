@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "path";
 
 export function activate(context: vscode.ExtensionContext) {
   let disposable = vscode.commands.registerCommand(
@@ -7,7 +8,7 @@ export function activate(context: vscode.ExtensionContext) {
       const panel = vscode.window.createWebviewPanel(
         `vue-practice`,
         `Vue Practice`,
-        vscode.ViewColumn.Two,
+        vscode.ViewColumn.One,
         {
           enableScripts: true,
         }
@@ -23,6 +24,11 @@ function getWebviewContent(
   context: vscode.ExtensionContext,
   webview: vscode.Webview
 ): string {
+  const scriptUri = webview.asWebviewUri(
+    vscode.Uri.file(
+      path.join(context.extensionPath, "media", "dist", "main.js")
+    )
+  );
   return `<!DOCTYPE html>
           <html lang="ja">
           <head>
@@ -31,7 +37,9 @@ function getWebviewContent(
               <title>Hello</title>
           </head>
           <body>
-              Hello World!!
+              Hello World
+              <div id="entry"></div>
+              <script src=${scriptUri}></script>
           </body>
           </html>`;
 }
