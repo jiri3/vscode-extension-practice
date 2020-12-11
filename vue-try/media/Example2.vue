@@ -11,7 +11,7 @@
 export default {
   data() {
     return {
-      msg: "Hello world Vue",
+      msg: "Example2",
     };
   },
 };
@@ -19,6 +19,6 @@ export default {
 
 <style scoped>
 .example {
-  color: red;
+  color: blue;
 }
 </style>

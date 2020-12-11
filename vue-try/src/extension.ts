@@ -11,6 +11,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.ViewColumn.One,
         {
           enableScripts: true,
+          // メモリ消費が大きいとのこと
+          // https://code.visualstudio.com/api/extension-guides/webview#retaincontextwhenhidden
+          retainContextWhenHidden: true,
         }
       );
       panel.webview.html = getWebviewContent(context, panel.webview);
@@ -37,7 +40,6 @@ function getWebviewContent(
               <title>Hello</title>
           </head>
           <body>
-              Hello World
               <div id="entry"></div>
               <script src=${scriptUri}></script>
           </body>
