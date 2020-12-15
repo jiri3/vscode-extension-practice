@@ -11,7 +11,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.ViewColumn.One,
         {
           enableScripts: true,
-          // メモリ消費が大きいとのこと
+          // VS Codeのタブを切り替えるとTopページに強制的に戻るのを防ぐ。
+          // ただし、メモリ消費が大きいとのこと。
           // https://code.visualstudio.com/api/extension-guides/webview#retaincontextwhenhidden
           retainContextWhenHidden: true,
         }
