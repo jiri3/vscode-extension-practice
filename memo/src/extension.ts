@@ -117,6 +117,22 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
     this.fetchContents(document);
   }
 
+  /**
+   * ドキュメントに新規データを追加する.
+   * JSON形式のドキュメントのcontentsプロパティの末尾に
+   * 新規データを追加する.
+   *
+   * {
+   *    "contents":[
+   *      {"id":"1","title":"AA","memo":"ABCDEFG"},
+   *      {"id":"2","title":"B","memo":"12345"}
+   *      ///  末尾に新規データ(content)の内容を追加する ///
+   *    ]
+   *  }
+   *
+   * @param document
+   * @param content 新規登録データ
+   */
   private async add(document: vscode.TextDocument, content: Contents) {
     const { title, memo } = content;
     let id = 1;
@@ -127,22 +143,45 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
     }
 
     const text = document.getText();
+    // ドキュメント中から末尾のcontentsデータを探す正規表現
     const replaceRegExp = new RegExp(`\\}\\s*\\]`);
     const firstIndex = text.search(replaceRegExp);
     const position = document.positionAt(firstIndex + 1);
     const edit = new vscode.WorkspaceEdit();
+
+    // ドキュメントにcontentのデータを追加する
+    // replaceメソッドは、ドキュメントの保存はされないので注意のこと
     edit.replace(
       document.uri,
       new vscode.Range(position, position),
       `,\r${JSON.stringify({ id: id.toString(), title, memo })}`
     );
 
+    // ドキュメントを保存する
     return this.save(document, edit);
   }
 
+  /**
+   * ドキュメントを更新する.
+   * content.idと一致するドキュメント内のJSONデータを書換える.
+   *
+   * ex) cotent.id = "2"の場合
+   * {
+   *    "contents":[
+   *      {"id":"1","title":"AA","memo":"ABCDEFG"},
+   *      {"id":"2","title":"B","memo":"12345"},
+   *      // ↑ 上記データをcontentの内容に書換える
+   *      ...
+   *    ]
+   * }
+   *
+   * @param document
+   * @param content 更新データ
+   */
   private async update(document: vscode.TextDocument, content: Contents) {
     const { id } = content;
     const text = document.getText();
+    // ドキュメント中から書換え対象のデータを探す正規表現
     const replaceRegExp = new RegExp(`\\{\\s*"id":\\s*"${id}"(?:.|\\s)*?\\}`);
     const firstIndex = text.search(replaceRegExp);
     const match = text.match(replaceRegExp);
@@ -150,6 +189,8 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
     if (!match?.length) return;
     const lastIndex = firstIndex + match[0].length;
 
+    // ドキュメントにcontentのデータを反映する
+    // replaceメソッドは、ドキュメントの保存はされないので注意のこと
     const edit = new vscode.WorkspaceEdit();
     edit.replace(
       document.uri,
@@ -160,6 +201,7 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
       JSON.stringify(content)
     );
 
+    // ドキュメントを保存する
     return this.save(document, edit);
   }
 
