@@ -53,10 +53,8 @@ const vscode = acquireVsCodeApi();
     vscode.setState({ memo });
   };
 
-  function refreshView(contents: Contents) {
-    // TODO
-    const state = vscode.get;
-    const body = document.querySelector("body");
+  function refreshView(memo: Memo) {
+    createView(memo);
   }
 
   window.addEventListener("message", (e) => {

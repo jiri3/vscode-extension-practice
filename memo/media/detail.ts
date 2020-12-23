@@ -60,10 +60,20 @@ const vscode = acquireVsCodeApi();
     vscode.setState({ contents });
   };
 
-  const refreshView = (contents: Contents) => {
-    // TODO
-    const state = vscode.get;
-    const body = document.querySelector("body");
+  const refreshView = ({ contents }: Memo) => {
+    const prevContents: Contents = vscode.getState().contents;
+    const sameIdContents = contents.find(
+      (value) => value.id === prevContents.id
+    );
+    if (!sameIdContents) return;
+
+    // 表示項目に一つでも異なる値があった場合、ビューを更新する
+    const isRefresh = (Object.keys(sameIdContents) as (keyof Contents)[]).some(
+      (value) => sameIdContents[value] !== prevContents[value]
+    );
+    if (isRefresh) {
+      createView(sameIdContents);
+    }
   };
   window.addEventListener("message", (e) => {
     const message = e.data;
@@ -72,6 +82,7 @@ const vscode = acquireVsCodeApi();
         createView(message.payload);
         break;
       case "finishAdd":
+        // 新規登録後は、formにidをセットする
         const idElement = document.querySelector<HTMLInputElement>(
           "input[name='id']"
         );

@@ -39,6 +39,10 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
         if (e.uri.toString() === document.uri.toString()) {
           // ドキュメントとwebviewとの同期処理をする
           this.refreshContents(document);
+          webviewPanel.webview.postMessage({
+            type: "refresh",
+            payload: this.contents,
+          });
         }
       }
     );
