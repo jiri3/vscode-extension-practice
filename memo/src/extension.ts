@@ -1,19 +1,11 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import { Contents, Memo } from "./interface";
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(CustomTextEditor.register(context));
 }
 
-interface Contents {
-  id: string;
-  title: string;
-  memo: string;
-}
-
-interface Memo {
-  contents: Contents[];
-}
 class CustomTextEditor implements vscode.CustomTextEditorProvider {
   private static readonly viewType = `extension-practice.memo`;
   private contents: Memo = { contents: [] };
@@ -39,70 +31,50 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
     };
     this.fetchContents(document);
 
-    webviewPanel.webview.html = this.getListView(
-      this.context,
-      webviewPanel.webview,
-      this.contents
-    );
-
     // webviewとドキュメントの同期処理をする
     // ドキュメントが直接更新された場合、
     // または、カスタムエディタが複数開かれており、どちらか一方で更新された場合など。
-    // const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(
-    //   (e) => {
-    //     if (e.document.uri.toString() === document.uri.toString()) {
-    //       // ドキュメントとwebviewとの同期処理をする
-    //     }
-    //   }
-    // );
-    // webviewPanel.onDidDispose(() => {
-    //   changeDocumentSubscription.dispose();
-    // });
+    const saveDocumentSubscription = vscode.workspace.onDidSaveTextDocument(
+      (e) => {
+        if (e.uri.toString() === document.uri.toString()) {
+          // ドキュメントとwebviewとの同期処理をする
+          this.refreshContents(document);
+        }
+      }
+    );
+    webviewPanel.onDidDispose(() => {
+      saveDocumentSubscription.dispose();
+    });
 
     webviewPanel.webview.onDidReceiveMessage(async (e) => {
       switch (e.type) {
         case "detail":
-          const contentFilteredId = this.contents.contents.filter(
-            (value) => value.id == e.payload.id
-          );
-          if (contentFilteredId.length < 1) return;
-          webviewPanel.webview.html = this.getDetailView(
-            this.context,
-            webviewPanel.webview,
-            contentFilteredId[0]
-          );
+          this.createDetailView(webviewPanel, e.payload);
           break;
         case "add":
-          const memo: Contents = {
-            id: "",
-            title: "",
-            memo: "",
-          };
-          webviewPanel.webview.html = this.getDetailView(
-            this.context,
-            webviewPanel.webview,
-            memo
-          );
+          this.createAddView(webviewPanel);
           break;
         case "save":
           const { payload } = e;
           if (!payload.id) {
-            this.add(document, payload);
+            const id = await this.add(document, payload);
+            payload.id = id;
+            webviewPanel.webview.postMessage({
+              type: "finishAdd",
+              payload,
+            });
           } else {
             await this.update(document, payload);
           }
           break;
         case "back":
-          this.refreshContents(document);
-          webviewPanel.webview.html = this.getListView(
-            this.context,
-            webviewPanel.webview,
-            this.contents
-          );
+          this.createListView(webviewPanel);
           break;
         default:
       }
     });
+
+    this.createListView(webviewPanel);
   }
 
   private fetchContents(document: vscode.TextDocument) {
@@ -158,7 +130,7 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
     );
 
     // ドキュメントを保存する
-    return this.save(document, edit);
+    return (await this.save(document, edit)) ? id.toString() : null;
   }
 
   /**
@@ -216,26 +188,75 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
 
   private getListView(
     context: vscode.ExtensionContext,
-    webview: vscode.Webview,
-    memo: Memo | null
+    webview: vscode.Webview
   ): string {
-    if (!memo) return "";
-    const body = memo.contents.reduce((pre, cur) => {
-      return `${pre}<tr><td>
-        <a href="javascript:voie(0)" data-id="${cur.id}">${cur.title}</a>
-      </td><td>${cur.memo}</td></tr>`;
-    }, "");
-    const table = `<table border="1">
-      <thead><tr><th>タイトル</th><th>メモ</th></tr></thead>
-      <tbody>${body}</tbody>
-    </table>`;
-
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.file(
-        path.join(context.extensionPath, "media", "out", "list.js")
+        path.join(context.extensionPath, "media", "out", "media", "list.js")
       )
     );
 
+    return this.getTemplate(scriptUri);
+  }
+
+  private createListView(webviewPanel: vscode.WebviewPanel) {
+    webviewPanel.webview.html = this.getListView(
+      this.context,
+      webviewPanel.webview
+    );
+    webviewPanel.webview.postMessage({
+      type: "create",
+      payload: this.contents,
+    });
+  }
+
+  private getDetailView(
+    context: vscode.ExtensionContext,
+    webview: vscode.Webview
+  ) {
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.file(
+        path.join(context.extensionPath, "media", "out", "media", "detail.js")
+      )
+    );
+    return this.getTemplate(scriptUri);
+  }
+
+  private createDetailView(
+    webviewPanel: vscode.WebviewPanel,
+    payload: Contents
+  ) {
+    const contentFilteredId = this.contents.contents.filter(
+      (value) => value.id == payload.id
+    );
+    if (contentFilteredId.length < 1) return;
+    webviewPanel.webview.html = this.getDetailView(
+      this.context,
+      webviewPanel.webview
+    );
+    webviewPanel.webview.postMessage({
+      type: "create",
+      payload: contentFilteredId[0],
+    });
+  }
+
+  private createAddView(webviewPanel: vscode.WebviewPanel) {
+    const memo: Contents = {
+      id: "",
+      title: "",
+      memo: "",
+    };
+    webviewPanel.webview.html = this.getDetailView(
+      this.context,
+      webviewPanel.webview
+    );
+    webviewPanel.webview.postMessage({
+      type: "create",
+      payload: memo,
+    });
+  }
+
+  private getTemplate(scriptUri: vscode.Uri): string {
     return `<!DOCTYPE html>
     <html lang="ja">
       <head>
@@ -244,45 +265,8 @@ class CustomTextEditor implements vscode.CustomTextEditorProvider {
         <title>memo list</title>
       </head>
       <body>
-        <button type="button" class="add-button" name="add" value="add">新規</button>
-        ${table}
       </body>
-      <script src="${scriptUri}"></script>
-    </html>`;
-  }
-
-  private getDetailView(
-    context: vscode.ExtensionContext,
-    webview: vscode.Webview,
-    contents: Contents
-  ) {
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.file(
-        path.join(context.extensionPath, "media", "out", "detail.js")
-      )
-    );
-    return `<!DOCTYPE html>
-    <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Memo Detail</title>
-      </head>
-      <body style="max-width:300px;">
-        <form name="form">
-          <input name="id" type="hidden" value="${contents.id}" />
-          <div>
-            <label>タイトル:</label><input name="title" type="text" value="${contents.title}" required />
-          </div>
-          <div>
-            <label style="vertical-align:top;">メモ:</label>
-            <textarea name="memo" rows="4" cols="30">${contents.memo}</textarea>
-          </div>
-          <button style="float:right; margin-right:50px" type="button" class="save-button" name="save" value="save">保存</button>
-          <button style="float:right; margin-right:20px" type="button" class="back-button" name="back" value="back">戻る</button>
-        </form>
-      </body>
-      <script src="${scriptUri}"></script>
+      <script type="module" src="${scriptUri}"></script>
     </html>`;
   }
 }

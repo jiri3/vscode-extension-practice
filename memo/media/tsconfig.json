@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "None",
+    "module": "ES6",
     "target": "ES6",
     "outDir": "./out",
     "lib": ["es6", "dom"],
